@@ -1,0 +1,12 @@
+export(FAMILY)
+importFrom(pheatmap, pheatmap)
+importFrom(pROC, roc)
+
+
+S3method(coef, FAMILY)
+S3method(predict, FAMILY)
+S3method(print, FAMILY)
+
+S3method(plot, interac)
+S3method(print, interac)
+S3method(print, coefMISH)
