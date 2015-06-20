@@ -10,9 +10,9 @@ This function runs the main algorithm presented in Haris, Witten and Simon (2014
 }
 \usage{
 FAMILY(X, Z, Y, lambdas , alphas, family = c("gaussian","binomial"), 
-    rho = 1, B, norm = "l2", quad = TRUE,iter=500, 
-    e.primal = 1e-3, e.dual = 1e-3,
-    maxiter.B = 50, tol.B = 1e-04, verbose = FALSE )
+    rho = 1, B = NULL, norm = "l2", quad = TRUE,iter=500, 
+    e.abs = 1e-3, e.rel = 1e-3,
+    maxiter.B = 50, tol.B = 1e-04, verbose = FALSE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -51,11 +51,11 @@ A logical variable indicating if we wish to include quadratic terms when \code{X
 \item{iter}{
 The maximum number of iterations for the ADMM algorithm. 
 }
-  \item{e.primal}{
-The tolerance for convergence with respect to the primal residuals. Usually \code{1e-2} or \code{1e-3} is sufficient. 
+  \item{e.abs}{
+An absolute tolerance for convergence.
 }
-  \item{e.dual}{
-The tolerance for convergence with respect to the dual residuals.
+  \item{e.rel}{
+A relative tolerance for convergence. These are used to find a stopping criterion for the ADMM as done in Section 3.3.1 of Boyd, Stephen, et al. 2011
 }
 \item{maxiter.B}{
 The maximum number of iterations for updating \code{B} via the iterative algorithm for logistic regression.
@@ -96,7 +96,9 @@ The function also returns the training data used to fit the model and the path o
 
 }
 \references{
-Haris, Witten and Simon (2014). Convex Modeling of Interactions with Strong Heredity. Available on ArXiv at {http://arxiv.org/abs/1410.3517}
+Haris, Witten and Simon (2014). Convex Modeling of Interactions with Strong Heredity. Available on ArXiv at {http://arxiv.org/abs/1410.3517}.
+
+Boyd, Stephen, et al. "Distributed optimization and statistical learning via the alternating direction method of multipliers." Foundations and Trends? in Machine Learning 3.1 (2011): 1-122.
 }
 
 

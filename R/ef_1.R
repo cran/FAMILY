@@ -36,3 +36,16 @@ v2fm<- function(vec,p){
 
 
 
+soft.thres<- function(vec,scal){
+  #print(vec)
+  sign(vec)*pmax((abs(vec) - scal),0)
+}
+
+max_l<- function(l,grp,y_vec,alpha,p){
+  n<- length(y_vec)
+  vec<- as.vector(t(grp)%*%y_vec)
+  for(i in 1:length(l)){
+    l[i] <- sum((soft.thres(vec/n,l[i]*alpha))^2) - p*(1-alpha)^2*l[i]^2  
+  }
+  return(l)
+}

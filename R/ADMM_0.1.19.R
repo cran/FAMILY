@@ -237,7 +237,7 @@ generate.w<- function(X=matrix(),Z=matrix(), quad = TRUE){
 estimate.SH<- function(x,z,y=numeric(),w,svd.w,
                       lambda = c(1,1,1), rho = 1, 
                       B,matD,matE,matF,g.list,iter = 100,
-                      e.primal = 1e-4, e.dual=1e-4,quad = TRUE,norm = "l2"){
+                      e.abs = 1e-4, e.rel=1e-4,quad = TRUE,norm = "l2"){
   
   XequalZ = FALSE
   if(all(dim(x)==dim(z))){
@@ -248,8 +248,9 @@ estimate.SH<- function(x,z,y=numeric(),w,svd.w,
   
   num<- length(y)  
   for(i in 1:iter){
+    #print(i)
     #Update each variable
-    newB<-update_B.svd(y,svd.w,B,matD,matE,matF,g.list,rho,quad = quad)
+    newB<- update_B.svd(y,svd.w,B,matD,matE,matF,g.list,rho,quad = quad)
     newmatD<- update_D(y ,w,newB ,g.list,rho ,lambda,norm = norm)
     newmatE<- update_E(y ,w,newB ,g.list,rho ,lambda,norm = norm) 
     newmatF<- update_F(y ,w,newB ,g.list,rho ,lambda)
@@ -262,14 +263,21 @@ estimate.SH<- function(x,z,y=numeric(),w,svd.w,
     s.norm<- sqrt(d.diff+e.diff+f.diff) 
 
     
+    
+    
     #primal residual r. As defined in the paper
     d.dif2<- sum((newB-newmatD)^2,na.rm = TRUE)
     e.dif2<- sum((newB-newmatE)^2,na.rm = TRUE)
     f.dif2<- sum((newB-newmatF)^2,na.rm = TRUE)
     r.norm<- sqrt(d.dif2+e.dif2+f.dif2) 
   
+    other<- c(newmatD, newmatE, newmatF)
+    crit1<- max(sqrt(sum(newB^2)), sqrt(sum(other^2)))*e.rel + sqrt(length(B))*e.abs
+    crit2<- sqrt(sum(unlist(newg.list)^2))*e.rel + sqrt(length(B))*e.abs
+    
+    #print(c(s.norm, r.norm))
     #Stopping criteria as defined in Boyd paper using primal and dual residual.
-    if(r.norm< e.primal & s.norm < e.dual ){
+    if(r.norm< crit1 & s.norm < crit2 ){
       finB<- newB*(newmatD!=0)*(newmatF!=0)*(newmatE!=0)
       if(quad == FALSE){
         diag(finB)[-1]<- 0
@@ -436,8 +444,8 @@ update_B.logistic<- function(y = numeric(),w = matrix(),svd.w = list(),B = matri
 #one main function. 
 estimate.logistic<- function(x,z,y=numeric(),w,svd.w,
                              lambda = c(1,1,1), rho = 1, 
-                             B,matD,matE,matF,g.list,iter = 100,e.primal = 1e-4,
-                                e.dual= 1e-4,maxiter.B = 10,tol.B = 1e-4,quad = TRUE,
+                             B,matD,matE,matF,g.list,iter = 100,e.abs = 1e-4,
+                                e.rel= 1e-4,maxiter.B = 10,tol.B = 1e-4,quad = TRUE,
                              norm = "l2"){
   
   XequalZ = FALSE
@@ -473,7 +481,7 @@ estimate.logistic<- function(x,z,y=numeric(),w,svd.w,
     
     
     #Stopping creiteria
-    if(r.norm< e.primal & s.norm < e.dual ){
+    if(r.norm< e.abs & s.norm < e.rel ){
       finB<- newB*(newmatD!=0)*(newmatF!=0)*(newmatE!=0)
       if(quad == FALSE){
         diag(finB)[-1]<- 0
@@ -525,8 +533,8 @@ estimate.logistic<- function(x,z,y=numeric(),w,svd.w,
 #of values for lambda along which one wishes to solve. 
 FAMILY<- function(X,Z,Y =numeric(),lambdas = c(),alphas = c(),
                       family = c("gaussian","binomial"),
-                      rho = 1,B = NULL,norm = "l2" , quad = TRUE,iter = 500,e.primal = 1e-3,
-                      e.dual= 1e-3,maxiter.B = 50, tol.B = 1e-4,
+                      rho = 1, B = NULL,norm = "l2" , quad = TRUE,iter = 500,e.abs = 1e-3,
+                      e.rel= 1e-3,maxiter.B = 50, tol.B = 1e-4,
                       verbose = FALSE){
   
   start.time<- proc.time()[3]
@@ -570,25 +578,33 @@ FAMILY<- function(X,Z,Y =numeric(),lambdas = c(),alphas = c(),
     diag(B)[-1] <- NaN
   }
   matD = matE = matF = B
-  g1<- rep(1,ncol(B)*nrow(B))
-  g2<- rep(1,ncol(B)*nrow(B))
-  g3<- rep(1,ncol(B)*nrow(B))
+  g1<- rep(0,ncol(B)*nrow(B))
+  g2<- rep(0,ncol(B)*nrow(B))
+  g3<- rep(0,ncol(B)*nrow(B))
   g.list<- list(matrix(g1,ncol= ncol(B)),matrix(g2,ncol= ncol(B)),
                 matrix(g3,ncol= ncol(B)))
   
   
   length.alpha<- length(alphas) 
   length.lambda<- length(lambdas)
+  
   fin.result<- vector("list", length(alphas))
   
   cat("Computing w...")
-  w<- generate.w(X=X,Z=Z,quad)
+  if(quad){
+    w<- generate.w(X=X,Z=Z,quad)
+  }else{
+    w<- generate.w(X=X,Z=Z,quad)
+    w.full<- generate.w(X=X,Z=Z, TRUE)
+  }
+  
   cat("done.\n")
   num<- length(Y)  
   #SVD decomposition for the main matrix. 
   #Main slow part
   cat("Starting svd...")
   #print(dim(w))
+  
   svd.w<- svd(w)
   svd.w$tu<- t(svd.w$u)
   svd.w$tv<- t(svd.w$v)
@@ -597,10 +613,41 @@ FAMILY<- function(X,Z,Y =numeric(),lambdas = c(),alphas = c(),
   
   
   p1<- ncol(X)
-  p2<- ncol(X)
+  p2<- ncol(Z)
   
   for(i in 1:length.alpha){
     alpha<- alphas[i]
+#    #FIND MAX LAMBDA FOR A FIXED ALPHA
+#     croot<- 0
+#     for(rs in 2:(p1+1)){
+#       ind<- (0:p2)*(p1+1)+ rs
+#       if(quad){
+#         temp<- w[,ind]
+#       }else{
+#         #print(ind[rs])
+#         ind<- ind[-rs]
+#         temp<- w.full[,ind]
+#       }
+#       
+#       root<- uniroot.all(max_l, interval = c(1e-5,50), 
+#                   grp = temp, y_vec = Y,alpha = alpha, p = p2+1)
+#       croot<- max(root,croot)
+#     }
+#     for(cs in 2:(p2+1)){
+#       ind<- ((cs-1)*(p1+1)+1):(cs*(p1+1))
+#       if(quad){
+#         temp<- w[,ind]
+#       }else{
+#         #print(ind[rs])
+#         ind<- ind[-rs]
+#         temp<- w.full[,ind]
+#       }
+#       root<- uniroot.all(max_l, interval = c(1e-5,50), 
+#                          grp = temp, y_vec = Y,alpha = alpha, p = p2+1)
+#       croot<- max(root,croot)
+#     }
+#     
+    
     b.array<- vector("list", length.lambda)
     
     if(verbose) cat("Fitting model for alpha =", round(alpha,2) ,
@@ -611,8 +658,8 @@ FAMILY<- function(X,Z,Y =numeric(),lambdas = c(),alphas = c(),
                                   c(lambdas[length.lambda]*(1-alpha)*sqrt(p2),
                                   lambdas[length.lambda]*(1-alpha)*sqrt(p1),alpha*lambdas[length.lambda]) ,
                                   rho = rho, 
-                                  B,matD,matE,matF,g.list,iter = iter,e.primal = e.primal, 
-                                  e.dual=e.dual, quad = quad,norm = norm)
+                                  B,matD,matE,matF,g.list,iter = iter,e.abs = e.abs, 
+                                  e.rel=e.rel, quad = quad,norm = norm)
       b.array[[length.lambda]]$alpha = alpha
       b.array[[length.lambda]]$lambda = lambdas[length.lambda]
       
@@ -621,14 +668,14 @@ FAMILY<- function(X,Z,Y =numeric(),lambdas = c(),alphas = c(),
                                   c(lambdas[length.lambda]*(1-alpha)*sqrt(p2),
                                   lambdas[length.lambda]*(1-alpha)*sqrt(p1),alpha*lambdas[length.lambda]) ,
                                   rho = rho, 
-                                  B,matD,matE,matF,g.list,iter = iter,e.primal = e.primal, 
-                                  e.dual=e.dual,quad = quad,norm = norm)  
+                                  B,matD,matE,matF,g.list,iter = iter,e.abs = e.abs, 
+                                  e.rel=e.rel,quad = quad,norm = norm)  
       b.array[[length.lambda]]$alpha = alpha
       b.array[[length.lambda]]$lambda = lambdas[length.lambda]
     }
     
     if(!b.array[[length.lambda]]$conv)warning(paste("The algorithm did not converge for alpha= ",
-                                                    alpha," and lambda= " , length.lambda,"did not converge"))
+                                                    alpha," and lambda= " , lambdas[length.lambda],"did not converge"))
     for(lam in (length.lambda-1):1){
       if(verbose) cat("Fitting model for alpha =", round(alpha,2) ,"and lambda =", round(lambdas[lam],2), "\n")
       
@@ -639,8 +686,8 @@ FAMILY<- function(X,Z,Y =numeric(),lambdas = c(),alphas = c(),
                                        lambdas[lam]*(1-alpha)*sqrt(p1),alpha*lambdas[lam]) ,
                                      rho = b.array[[lam+1]]$rho, b.array[[lam+1]]$B,
                                      b.array[[lam+1]]$D,b.array[[lam+1]]$E,b.array[[lam+1]]$F,
-                                     b.array[[lam+1]]$glist,iter = iter,e.primal = e.primal, 
-                                     e.dual = e.dual,quad = quad,norm = norm)
+                                     b.array[[lam+1]]$glist,iter = iter,e.abs = e.abs, 
+                                     e.rel = e.rel,quad = quad,norm = norm)
         b.array[[lam]]$alpha = alpha
         b.array[[lam]]$lambda = lambdas[lam]
         
@@ -650,8 +697,8 @@ FAMILY<- function(X,Z,Y =numeric(),lambdas = c(),alphas = c(),
                                        lambdas[lam]*(1-alpha)*sqrt(p1),alpha*lambdas[lam]) ,
                                      rho = b.array[[lam+1]]$rho, b.array[[lam+1]]$B,
                                      b.array[[lam+1]]$D,b.array[[lam+1]]$E,b.array[[lam+1]]$F,
-                                     b.array[[lam+1]]$glist,iter = iter,e.primal = e.primal, 
-                                     e.dual = e.dual,quad = quad,norm = norm)
+                                     b.array[[lam+1]]$glist,iter = iter,e.abs = e.abs, 
+                                     e.rel = e.rel,quad = quad,norm = norm)
         b.array[[lam]]$alpha = alpha
         b.array[[lam]]$lambda = lambdas[lam]
         
@@ -916,6 +963,8 @@ predict.FAMILY<- function(object,new.X,new.Z, Bias.corr = FALSE,XequalZ = FALSE,
   
   #Generate w for prediction
   w.test <- generate.w(X=new.X,Z=new.Z)
+  
+  
   n<- nrow(new.X)
   predict.result<- array(0, c(n,length(object$lambda),length(object$alpha)))
   

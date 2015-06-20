@@ -1,6 +1,6 @@
 export(FAMILY)
 importFrom(pheatmap, pheatmap)
-importFrom(pROC, roc)
+import(pROC)
 
 
 S3method(coef, FAMILY)

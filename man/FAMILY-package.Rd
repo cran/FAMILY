@@ -10,10 +10,10 @@ A Convex Formulation for Modeling Interactions with Strong Heredity.
 Fits linear and logistic regression models with pairwise interactions for two sets of covariates. The models fitted by this package obey strong heredity which implies that interaction of two covariates is only included if both main effects are included in the model. In the case of high dimensional data we may not wish to model all possible covariates and their interactions but a small subset of them, thus we utilize the penalized regression methods of Haris, Witten and Simon (2014).}
 \details{
 \tabular{ll}{
-Package: \tab Interact.SH\cr
+Package: \tab FAMILY\cr
 Type: \tab Package\cr
-Version: \tab 0.1.18\cr
-Date: \tab 2014-11-03\cr
+Version: \tab 0.1.19\cr
+Date: \tab 2015-06-20\cr
 License: \tab GPL-2 \cr
 }
 
